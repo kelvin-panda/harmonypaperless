@@ -50,6 +50,9 @@ export class ConfigManager {
     this.copyRaw('meet/client.dev', this.meetDir + '/client.dev');
     const ret = meetNative.prepareConfig(templatePath, configPath, serverIp, serverPort);
     hilog.info(DOMAIN, TAG, 'prepareConfig ret=%{public}d, path=%{public}s', ret, configPath);
+    if (ret !== 0) {
+      throw new Error(`prepareConfig failed: ${ret}`);
+    }
     return configPath;
   }
 }

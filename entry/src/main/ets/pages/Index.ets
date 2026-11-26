@@ -1,7 +1,7 @@
 import { common } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { PaperlessSdk } from '../core_sdk/PaperlessSdk';
-import { MeetingItem, MeetingDeviceItem } from '../core_sdk/model/Models';
+import { MeetingItem, MeetingDeviceItem, RoomItem } from '../core_sdk/model/Models';
 
 const DOMAIN = 0x0000;
 const TAG = 'sdk-smoke';
@@ -24,6 +24,7 @@ struct Index {
   @State currentRoomId: number = 0;
   @State signedIn: boolean = false;
   @State devices: MeetingDeviceItem[] = [];
+  @State rooms: RoomItem[] = [];
 
   private sdk: PaperlessSdk | null = null;
 
@@ -130,6 +131,23 @@ struct Index {
     }
   }
 
+  async doQueryRooms(): Promise<void> {
+    if (!this.sdk || this.busy) return;
+    this.busy = true;
+    try {
+      const list = await this.sdk.queryRooms();
+      this.rooms = list;
+      this.appendLog(`查询会场: ${list.length}`);
+      list.forEach((r: RoomItem) => {
+        this.appendLog(`会场 id=${r.id}, name=${r.name}, addr=${r.addr}`);
+      });
+    } catch (e) {
+      this.appendLog(`查询会场失败: ${String(e)}`);
+    } finally {
+      this.busy = false;
+    }
+  }
+
   async doQueryDevices(): Promise<void> {
     if (!this.sdk || this.busy) return;
     this.busy = true;
@@ -182,8 +200,9 @@ struct Index {
       }.width('100%')
 
       Row({ space: 8 }) {
+        Button('查询会场').onClick(() => this.doQueryRooms()).layoutWeight(1)
         Button('查询入会设备').onClick(() => this.doQueryDevices()).layoutWeight(1)
-        Text(`入会设备：${this.devices.length} 台`)
+        Text(`会场：${this.rooms.length}  设备：${this.devices.length}`)
           .fontSize(13)
           .layoutWeight(2)
       }.width('100%')

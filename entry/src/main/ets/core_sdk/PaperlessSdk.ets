@@ -8,6 +8,14 @@ import { MeetingItem, MeetingResult, RoomItem, RoomResult, MeetingDeviceItem, Me
 const DOMAIN = 0x0000;
 const TAG = 'core-sdk';
 
+export enum SdkState {
+  UNINITIALIZED = 'uninitialized',
+  INITIALIZING = 'initializing',
+  READY = 'ready',
+  LOGGED_IN = 'logged_in',
+  DISPOSED = 'disposed'
+}
+
 /**
  * 会议 SDK 门面：页面只依赖本类，不直接依赖 libmeet.so。
  * 本阶段只封装 Demo 已确认存在的接口；文件/离线/绑定 PDF 等接口待确认后再加。
@@ -16,7 +24,7 @@ export class PaperlessSdk {
   private context: common.UIAbilityContext;
   private configManager: ConfigManager;
   private eventPoller: EventPoller = new EventPoller();
-  private initialized: boolean = false;
+  private state: SdkState = SdkState.UNINITIALIZED;
 
   constructor(context: common.UIAbilityContext) {
     this.context = context;
@@ -31,19 +39,35 @@ export class PaperlessSdk {
     return meetNative.isLoggedIn() === 1;
   }
 
+  getState(): SdkState {
+    return this.state;
+  }
+
   async init(serverIp: string, serverPort: number): Promise<void> {
-    const configPath = this.configManager.prepare(serverIp, serverPort);
-    const ret = await meetNative.init(configPath);
-    if (ret !== 0) {
-      throw new Error(`SDK init failed: ${ret}`);
+    if (this.state === SdkState.INITIALIZING) {
+      throw new Error('SDK is initializing');
     }
-    this.initialized = true;
-    // 与 Demo 保持一致：初始化播放资源；queryMeetings 必须在 SDK READY 之后调用
-    for (let res = 0; res < 4; res++) {
-      meetNative.initPlayRes(res, 0, 0, 1920, 1080);
+    if (this.state === SdkState.READY || this.state === SdkState.LOGGED_IN) {
+      return;
     }
-    await this.waitUntilReady();
-    hilog.info(DOMAIN, TAG, 'SDK initialized and ready');
+    this.state = SdkState.INITIALIZING;
+    try {
+      const configPath = this.configManager.prepare(serverIp, serverPort);
+      const ret = await meetNative.init(configPath);
+      if (ret !== 0) {
+        throw new Error(`SDK init failed: ${ret}`);
+      }
+      // 与 Demo 保持一致：初始化播放资源；queryMeetings 必须在 SDK READY 之后调用
+      for (let res = 0; res < 4; res++) {
+        meetNative.initPlayRes(res, 0, 0, 1920, 1080);
+      }
+      await this.waitUntilReady();
+      this.state = SdkState.READY;
+      hilog.info(DOMAIN, TAG, 'SDK initialized and ready');
+    } catch (e) {
+      this.state = SdkState.UNINITIALIZED;
+      throw new Error('SDK init exception: ' + String(e));
+    }
   }
 
   /** 轮询 isReady，避免 init 返回后立刻查询会议得到空列表 */
@@ -61,14 +85,30 @@ export class PaperlessSdk {
   }
 
   async login(user: string, password: string): Promise<void> {
+    if (this.state === SdkState.LOGGED_IN || this.isLoggedIn()) {
+      this.state = SdkState.LOGGED_IN;
+      return;
+    }
+    if (this.state !== SdkState.READY) {
+      throw new Error('SDK is not ready');
+    }
     const ret = await meetNative.login(user, password);
-    if (ret !== 0) {
+    // Demo 以 isLoggedIn 判断登录成功；ret 不能简单等同于 0/1 成功码
+    if (!this.isLoggedIn()) {
       throw new Error(`SDK login failed: ${ret}`);
     }
-    hilog.info(DOMAIN, TAG, 'SDK login success');
+    this.state = SdkState.LOGGED_IN;
+    hilog.info(DOMAIN, TAG, 'SDK login success, ret=%{public}d', ret);
+  }
+
+  private ensureReady(): void {
+    if (this.state !== SdkState.READY && this.state !== SdkState.LOGGED_IN) {
+      throw new Error('SDK is not ready: ' + this.state);
+    }
   }
 
   async queryMeetings(): Promise<MeetingItem[]> {
+    this.ensureReady();
     const raw = await meetNative.queryMeetings();
     const result = JSON.parse(raw) as MeetingResult;
     // Demo 的 queryMeetings 返回 ret=1、count=1 仍表示成功；不能要求 ret==0
@@ -81,6 +121,7 @@ export class PaperlessSdk {
   }
 
   async queryRooms(): Promise<RoomItem[]> {
+    this.ensureReady();
     const raw = await meetNative.queryRooms();
     const result = JSON.parse(raw) as RoomResult;
     hilog.info(DOMAIN, TAG, 'queryRooms ret=%{public}d count=%{public}d',
@@ -92,6 +133,7 @@ export class PaperlessSdk {
   }
 
   async queryMeetingDevices(): Promise<MeetingDeviceItem[]> {
+    this.ensureReady();
     const raw = await meetNative.queryMeetingDevices();
     const result = JSON.parse(raw) as MeetingDeviceResult;
     // Demo 中 ret 表示入会设备数量，不是 0/1 成功码
@@ -104,6 +146,7 @@ export class PaperlessSdk {
   }
 
   async selectMeeting(meetingId: number): Promise<void> {
+    this.ensureReady();
     const ret = meetNative.setCurrentMeeting(meetingId);
     if (ret !== 0) {
       throw new Error(`setCurrentMeeting failed: ${ret}`);
@@ -111,6 +154,7 @@ export class PaperlessSdk {
   }
 
   async enterMeeting(): Promise<void> {
+    this.ensureReady();
     const ret = await meetNative.enterMeeting();
     if (ret !== 0) {
       throw new Error(`enterMeeting failed: ${ret}`);
@@ -118,6 +162,7 @@ export class PaperlessSdk {
   }
 
   async signIn(signinType: number = 0): Promise<void> {
+    this.ensureReady();
     const ret = await meetNative.signIn(signinType);
     if (ret !== 0) {
       throw new Error(`signIn failed: ${ret}`);
@@ -143,9 +188,9 @@ export class PaperlessSdk {
 
   exit(): void {
     this.stopEvents();
-    if (this.initialized) {
+    if (this.state !== SdkState.UNINITIALIZED && this.state !== SdkState.DISPOSED) {
       meetNative.exit();
-      this.initialized = false;
+      this.state = SdkState.DISPOSED;
     }
   }
 }
