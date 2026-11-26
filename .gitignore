@@ -1,0 +1,19 @@
+/node_modules
+/oh_modules
+/local.properties
+/.idea
+**/build
+/.hvigor
+.cxx
+/.clangd
+/.clang-format
+/.clang-tidy
+**/.test
+/.appanalyzer
+
+# 设备/厂商授权文件，可能包含客户授权信息，不提交
+/entry/src/main/resources/rawfile/meet/client.dev
+*.p12
+*.p7b
+*.cer
+*.keystore

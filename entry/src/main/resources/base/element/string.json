@@ -1,0 +1,24 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "module description"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "description"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "label"
+    },
+    {
+      "name": "camera_reason",
+      "value": "会议需要摄像头"
+    },
+    {
+      "name": "mic_reason",
+      "value": "会议需要麦克风"
+    }
+  ]
+}
