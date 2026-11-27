@@ -169,6 +169,17 @@ export class PaperlessSdk {
     }
   }
 
+  /** 修改参会人角色：1=普通，3=主持人，4=秘书，9=管理员 */
+  async modifyMemberRole(memberId: number, role: number): Promise<void> {
+    this.ensureReady();
+    const ret = await meetNative.modifyMemberRole(memberId, role);
+    if (ret !== 0) {
+      throw new Error(`modifyMemberRole failed: ${ret}`);
+    }
+    hilog.info(DOMAIN, TAG, 'modifyMemberRole member=%{public}d role=%{public}d',
+      memberId, role);
+  }
+
   /** 当前参会人 id；设备 id 当前 NAPI 未暴露 */
   getSelfMemberId(): number {
     return meetNative.getSelfMemberId();

@@ -24,6 +24,7 @@ export interface MeetNativeApi {
   isSignedIn(): number;
   getSelfMemberId(): number;
   setFaceState(state: number): Promise<number>;
+  modifyMemberRole(memberId: number, role: number): Promise<number>;
   queryMeetingDevices(): Promise<string>;
 
   initPlayRes(res: number, x: number, y: number, w: number, h: number): number;

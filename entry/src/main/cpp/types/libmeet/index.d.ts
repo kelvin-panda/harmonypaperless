@@ -23,6 +23,7 @@ export const getPlayProgress: () => string;
 export const signIn: (signinType: number) => Promise<number>;
 export const enterMeeting: () => Promise<number>;
 export const setFaceState: (state: number) => Promise<number>;
+export const modifyMemberRole: (memberId: number, role: number) => Promise<number>;
 export const playStream: (deviceId: number, subId: number, res: number,
                            playflag: number) => Promise<number>;
 export const stopPlayStream: () => Promise<number>;

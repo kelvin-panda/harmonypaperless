@@ -165,6 +165,20 @@ struct Index {
     }
   }
 
+  async doChangeRole(): Promise<void> {
+    if (!this.sdk || this.busy || this.selfMemberId === 0) return;
+    this.busy = true;
+    try {
+      // 3 = 主持人；仅用于 NAPI 联调，可在后台改回
+      await this.sdk.modifyMemberRole(this.selfMemberId, 3);
+      this.appendLog(`修改角色成功: member=${this.selfMemberId}, role=3`);
+    } catch (e) {
+      this.appendLog(`修改角色失败: ${String(e)}`);
+    } finally {
+      this.busy = false;
+    }
+  }
+
   build() {
     Column({ space: 8 }) {
       Text('HarmonyPaperless · 阶段 0 SDK 验证')
@@ -202,6 +216,7 @@ struct Index {
       Row({ space: 8 }) {
         Button('查询会场').onClick(() => this.doQueryRooms()).layoutWeight(1)
         Button('查询入会设备').onClick(() => this.doQueryDevices()).layoutWeight(1)
+        Button('改角色').onClick(() => this.doChangeRole()).layoutWeight(1)
         Text(`会场：${this.rooms.length}  设备：${this.devices.length}`)
           .fontSize(13)
           .layoutWeight(2)
