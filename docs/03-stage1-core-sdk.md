@@ -72,8 +72,37 @@ queryMeetings 成功: 1
 设备 id=17858575, name=Pad-f
 ```
 
+## 登录验证
+使用测试账号 `root` / `123456`，真机验证通过：
+
+```text
+login 成功
+参会人 id=26, signedIn=false
+状态：已登录 ready=true login=true
+```
+
+登录后继续验证：
+
+```text
+queryMeetings 成功: 1
+会议 37 快捷会议 status=1, roomId=1
+进入会议成功
+签到成功, memberId=26
+```
+
+## 入会设备
+入会设备列表在未登录时实测可返回：
+
+```text
+入会设备: 2 台
+设备 id=17858609, name=Pad-31
+设备 id=17858575, name=Pad-f
+```
+
+登录为管理员后再次查询返回 0 台，说明该接口受当前会议/登录角色/设备在线状态影响，后续需要继续确认语义；不影响登录、会议、会场、签到链路。
+
 ## 未验证/限制
-1. 真实账号登录尚未验证：当前测试环境没有有效账号密码。
+1. `queryMeetingDevices` 在管理员登录后返回 0 台，需确认服务端当前会议是否有其他在线设备。
 2. 设备 ID、DEVICEVALIDATE 的 `valList/valflag` 仍没有结构化 NAPI。
 3. `client.dev` 未提交仓库（设备授权文件，已 ignore），新环境需从 Demo/厂商提供。
 4. 提交仓库的 `build-profile.json5` 清空签名配置；本地构建前需配置自己的签名。
